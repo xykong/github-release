@@ -1,7 +1,10 @@
+// Copyright © 2019 xykong <xy.kong@gmail.com>
+
+
 package main
 
-import "fmt"
+import "github.com/xykong/github-release/cmd"
 
 func main() {
-    fmt.Println("hello world")
+	cmd.Execute()
 }
