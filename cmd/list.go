@@ -1,12 +1,12 @@
 // Copyright © 2019 xykong <xy.kong@gmail.com>
 
-
 package cmd
 
 import (
 	"fmt"
-
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
+	"github.com/xykong/github-release/github"
 )
 
 // listCmd represents the list command
@@ -20,7 +20,20 @@ Cobra is a CLI library for Go that empowers applications.
 This application is a tool to generate the needed files
 to quickly create a Cobra application.`,
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("list called")
+
+		_ = viper.BindPFlag("id", cmd.PersistentFlags().Lookup("id"))
+
+		owner := viper.GetString("user")
+		repo := viper.GetString("repo")
+
+		fmt.Printf("list called: %v, %s, %s\n", args, owner, repo)
+
+		if viper.GetBool("assets") {
+			github.ListAssets(owner, repo)
+			return
+		}
+
+		_, _ = github.GetReleases(owner, repo)
 	},
 }
 
@@ -32,6 +45,11 @@ func init() {
 	// Cobra supports Persistent Flags which will work for this command
 	// and all subcommands, e.g.:
 	// listCmd.PersistentFlags().String("foo", "", "A help for foo")
+	listCmd.PersistentFlags().BoolP("assets", "a", false, "Users with push access to the repository can edit a release.")
+	_ = viper.BindPFlag("assets", listCmd.PersistentFlags().Lookup("assets"))
+
+	listCmd.PersistentFlags().StringP("id", "i", "", "The id of the release")
+	_ = viper.BindPFlag("id", listCmd.PersistentFlags().Lookup("id"))
 
 	// Cobra supports local flags which will only run when this command
 	// is called directly, e.g.:

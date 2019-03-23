@@ -1,13 +1,12 @@
 // Copyright © 2019 xykong <xy.kong@gmail.com>
 
-
 package cmd
 
 import (
 	"fmt"
 	"os"
 
-	homedir "github.com/mitchellh/go-homedir"
+	"github.com/mitchellh/go-homedir"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -46,6 +45,12 @@ func init() {
 	// will be global for your application.
 	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.github-release.yaml)")
 
+	rootCmd.PersistentFlags().StringP("user", "u", "", "The authenticated user owned the repository")
+	_ = viper.BindPFlag("user", rootCmd.PersistentFlags().Lookup("user"))
+
+	rootCmd.PersistentFlags().StringP("repo", "r", "", "The name of the repository")
+	_ = viper.BindPFlag("repo", rootCmd.PersistentFlags().Lookup("repo"))
+
 	// Cobra also supports local flags, which will only run
 	// when this action is called directly.
 	rootCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
@@ -65,9 +70,14 @@ func initConfig() {
 		}
 
 		// Search config in home directory with name ".github-release" (without extension).
+		viper.AddConfigPath(".") // optionally look for config in the working directory
 		viper.AddConfigPath(home)
+		viper.AddConfigPath("/usr/local/etc/") // path to look for the config file in
+		viper.AddConfigPath("/etc/")           // path to look for the config file in
 		viper.SetConfigName(".github-release")
 	}
+
+	viper.SetDefault("github", "https://api.github.com")
 
 	viper.AutomaticEnv() // read in environment variables that match
 

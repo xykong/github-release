@@ -1,10 +1,11 @@
 // Copyright © 2019 xykong <xy.kong@gmail.com>
 
-
 package cmd
 
 import (
 	"fmt"
+	"github.com/spf13/viper"
+	"github.com/xykong/github-release/github"
 
 	"github.com/spf13/cobra"
 )
@@ -12,15 +13,22 @@ import (
 // createCmd represents the create command
 var createCmd = &cobra.Command{
 	Use:   "create",
-	Short: "A brief description of your command",
-	Long: `A longer description that spans multiple lines and likely contains examples
-and usage of using your command. For example:
-
-Cobra is a CLI library for Go that empowers applications.
-This application is a tool to generate the needed files
-to quickly create a Cobra application.`,
+	Short: "Users with push access to the repository can create a release.",
+	Long: `This endpoint triggers notifications. Creating content too quickly 
+using this endpoint may result in abuse rate limiting. 
+See "Abuse rate limits" and "Dealing with abuse rate limits" 
+for details.
+`,
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("create called")
+
+		_ = viper.BindPFlag("id", cmd.PersistentFlags().Lookup("id"))
+
+		owner := viper.GetString("user")
+		repo := viper.GetString("repo")
+
+		fmt.Printf("create called: %v, %s, %s\n", args, owner, repo)
+
+		github.CreateRelease(owner, repo)
 	},
 }
 
@@ -32,6 +40,32 @@ func init() {
 	// Cobra supports Persistent Flags which will work for this command
 	// and all subcommands, e.g.:
 	// createCmd.PersistentFlags().String("foo", "", "A help for foo")
+	createCmd.PersistentFlags().StringP("token", "t", "", "The tag of the release")
+	_ = viper.BindPFlag("token", createCmd.PersistentFlags().Lookup("token"))
+
+	createCmd.PersistentFlags().StringP("tag_name", "", "", "The tag of the release")
+	_ = viper.BindPFlag("tag_name", createCmd.PersistentFlags().Lookup("tag_name"))
+
+	createCmd.PersistentFlags().StringP("target_commitish", "", "", "The tag of the release")
+	_ = viper.BindPFlag("target_commitish", createCmd.PersistentFlags().Lookup("target_commitish"))
+
+	createCmd.PersistentFlags().StringP("name", "", "", "The tag of the release")
+	_ = viper.BindPFlag("name", createCmd.PersistentFlags().Lookup("name"))
+
+	createCmd.PersistentFlags().StringP("body", "", "", "The tag of the release")
+	_ = viper.BindPFlag("body", createCmd.PersistentFlags().Lookup("body"))
+
+	createCmd.PersistentFlags().BoolP("draft", "", false, "The tag of the release")
+	_ = viper.BindPFlag("draft", createCmd.PersistentFlags().Lookup("draft"))
+
+	createCmd.PersistentFlags().BoolP("prerelease", "", false, "The tag of the release")
+	_ = viper.BindPFlag("prerelease", createCmd.PersistentFlags().Lookup("prerelease"))
+
+	createCmd.PersistentFlags().BoolP("edit", "e", false, "Users with push access to the repository can edit a release.")
+	_ = viper.BindPFlag("edit", createCmd.PersistentFlags().Lookup("edit"))
+
+	createCmd.PersistentFlags().StringP("id", "i", "", "The id of the release")
+	_ = viper.BindPFlag("id", createCmd.PersistentFlags().Lookup("id"))
 
 	// Cobra supports local flags which will only run when this command
 	// is called directly, e.g.:

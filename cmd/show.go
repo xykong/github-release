@@ -1,26 +1,45 @@
 // Copyright © 2019 xykong <xy.kong@gmail.com>
 
-
 package cmd
 
 import (
 	"fmt"
-
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
+	"github.com/xykong/github-release/github"
 )
 
 // showCmd represents the show command
 var showCmd = &cobra.Command{
 	Use:   "show",
-	Short: "A brief description of your command",
-	Long: `A longer description that spans multiple lines and likely contains examples
-and usage of using your command. For example:
+	Short: "View the specified published full release for the repository.",
+	Long: `This returns an upload_url key corresponding to the endpoint for uploading release assets. 
+This key is a hypermedia resource.
 
-Cobra is a CLI library for Go that empowers applications.
-This application is a tool to generate the needed files
-to quickly create a Cobra application.`,
+If the id is not specified, this will return the latest release.
+The latest release is the most recent non-prerelease, non-draft release,
+sorted by the created_at attribute. The created_at attribute is the date
+of the commit used for the release, and not the date when the release was
+drafted or published.
+
+Get a published release with the specified tag.
+`,
+
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("show called")
+
+		owner := viper.GetString("user")
+		repo := viper.GetString("repo")
+		releaseId := viper.GetString("id")
+		tag := viper.GetString("tag")
+
+		fmt.Printf("show called: %v, %s, %s, %s\n", args, owner, repo, releaseId)
+
+		if tag != "" && releaseId != "" {
+			github.GetReleaseByTag(owner, repo, tag)
+			return
+		}
+
+		github.GetRelease(owner, repo, releaseId)
 	},
 }
 
@@ -32,6 +51,13 @@ func init() {
 	// Cobra supports Persistent Flags which will work for this command
 	// and all subcommands, e.g.:
 	// showCmd.PersistentFlags().String("foo", "", "A help for foo")
+	viper.SetDefault("id", "latest")
+
+	showCmd.PersistentFlags().StringP("id", "i", "", "The id of the release")
+	_ = viper.BindPFlag("id", showCmd.PersistentFlags().Lookup("id"))
+
+	showCmd.PersistentFlags().StringP("tag", "t", "", "The tag of the release")
+	_ = viper.BindPFlag("tag", showCmd.PersistentFlags().Lookup("tag"))
 
 	// Cobra supports local flags which will only run when this command
 	// is called directly, e.g.:
