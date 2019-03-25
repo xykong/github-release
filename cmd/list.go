@@ -14,12 +14,9 @@ import (
 var listCmd = &cobra.Command{
 	Use:   "list",
 	Short: "A brief description of your command",
-	Long: `A longer description that spans multiple lines and likely contains examples
-and usage of using your command. For example:
-
-Cobra is a CLI library for Go that empowers applications.
-This application is a tool to generate the needed files
-to quickly create a Cobra application.`,
+	Long: `Information about published releases are available to everyone. 
+Only users with push access will receive listings for draft releases.
+`,
 	Run: func(cmd *cobra.Command, args []string) {
 
 		_ = viper.BindPFlag("id", cmd.PersistentFlags().Lookup("id"))

@@ -4,6 +4,7 @@ package cmd
 
 import (
 	"fmt"
+	"github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 	"github.com/xykong/github-release/github"
 
@@ -28,8 +29,16 @@ for details.
 
 		fmt.Printf("create called: %v, %s, %s\n", args, owner, repo)
 
-		github.CreateRelease(owner, repo)
+		err := github.CreateRelease(owner, repo)
+		if err != nil {
+			logrus.WithFields(logrus.Fields{
+				"error": err,
+			}).Error("create called")
+		}
 	},
+	Example: `github-release create --tag_name v0.0.1\
+                      --name "The name of the release."\
+                      --body "Text describing the contents of the tag."`,
 }
 
 func init() {

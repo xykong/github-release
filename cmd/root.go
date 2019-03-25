@@ -4,6 +4,7 @@ package cmd
 
 import (
 	"fmt"
+	"github.com/sirupsen/logrus"
 	"os"
 
 	"github.com/mitchellh/go-homedir"
@@ -51,9 +52,8 @@ func init() {
 	rootCmd.PersistentFlags().StringP("repo", "r", "", "The name of the repository")
 	_ = viper.BindPFlag("repo", rootCmd.PersistentFlags().Lookup("repo"))
 
-	// Cobra also supports local flags, which will only run
-	// when this action is called directly.
-	rootCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
+	rootCmd.PersistentFlags().BoolP("verbose", "v", false, "Verbose message for debug")
+	_ = viper.BindPFlag("verbose", rootCmd.PersistentFlags().Lookup("verbose"))
 }
 
 // initConfig reads in config file and ENV variables if set.
@@ -85,4 +85,15 @@ func initConfig() {
 	if err := viper.ReadInConfig(); err == nil {
 		fmt.Println("Using config file:", viper.ConfigFileUsed())
 	}
+
+	level := logrus.InfoLevel
+	if viper.GetBool("verbose") {
+		level = logrus.DebugLevel
+	}
+	logrus.SetLevel(level)
+	logrus.SetFormatter(&logrus.TextFormatter{
+		DisableLevelTruncation: false,
+		DisableTimestamp:       true,
+		FullTimestamp:          true,
+	})
 }
