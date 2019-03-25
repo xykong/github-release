@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 	"io/ioutil"
 	"net/http"
@@ -85,106 +86,151 @@ type Release struct {
 
 type Releases []Release
 
-func GetReleases(owner string, repo string) (Releases, error) {
+func SendRequest(url string, method string, body []byte, token string, mime string, v interface{}) (*http.Response, error) {
 
-	github := viper.GetString("github")
-	resp, err := http.Get(fmt.Sprintf("%s/repos/%s/%s/releases", github, owner, repo))
+	req, err := http.NewRequest(method, url, bytes.NewBuffer(body))
 	if err != nil {
-		// handle error
-		fmt.Printf("http.Get failed: %v", err)
+		fmt.Printf("http.NewRequest failed: %v", err)
+		return nil, err
+	}
+
+	if mime == "" {
+		mime = "application/json"
+	}
+	req.Header.Set("Content-Type", mime)
+
+	if token != "" {
+		req.SetBasicAuth(token, "x-oauth-basic")
+	}
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		fmt.Printf("http.Client.Do failed: %v", err)
+		return nil, err
 	}
 
 	//noinspection GoUnhandledErrorResult
-	defer resp.Body.Close()
-
-	body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		// handle error
-		fmt.Printf("ioutil.ReadAll failed: %v", err)
+	if resp.Body != nil {
+		defer resp.Body.Close()
 	}
 
-	//fmt.Println(string(body))
-
-	res := Releases{}
-	err = json.Unmarshal(body, &res)
+	data, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		// handle error
+		fmt.Printf("http.Client.Do failed: %v", err)
+		return resp, err
+	}
+
+	err = json.Unmarshal(data, v)
+	if err != nil {
 		fmt.Printf("json.Unmarshal failed: %v", err)
+		return resp, err
 	}
 
-	fmt.Printf("Return StatusCode: %v\n", resp.StatusCode)
+	return resp, nil
+}
 
-	//fmt.Printf("Releases: %v", res)
+func validate(input map[string]string) error {
 
-	for _, r := range res {
+	for k, v := range input {
+
+		if v == "" {
+			return fmt.Errorf("%s is required", k)
+		}
+	}
+
+	return nil
+}
+
+// ListReleases
+func ListReleases(owner string, repo string) (Releases, error) {
+
+	github := viper.GetString("github")
+	url := fmt.Sprintf("%s/repos/%s/%s/releases", github, owner, repo)
+
+	err := validate(map[string]string{
+		"user": owner,
+		"repo": repo,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("list releases for a repository: %v", err)
+	}
+
+	logrus.WithFields(logrus.Fields{
+		"url": url,
+	}).Infof("List releases for a repository")
+
+	var releases = Releases{}
+	_, err = SendRequest(url, http.MethodGet, nil, "", "", &releases)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, r := range releases {
 		fmt.Printf("%4d    %s\n", r.ID, r.TagName)
 	}
 
-	return res, nil
+	return releases, nil
 }
 
-func GetRelease(owner string, repo string, releaseId string) {
+func GetRelease(owner string, repo string, releaseId string) (*Release, error) {
 
 	github := viper.GetString("github")
 	url := fmt.Sprintf("%s/repos/%s/%s/releases/%s", github, owner, repo, releaseId)
 
-	resp, err := http.Get(url)
+	err := validate(map[string]string{
+		"user":       owner,
+		"repo":       repo,
+		"release_id": releaseId,
+	})
 	if err != nil {
-		// handle error
-		fmt.Printf("http.Get failed: %v", err)
+		return nil, fmt.Errorf("get a single release: %v", err)
 	}
 
-	//noinspection GoUnhandledErrorResult
-	defer resp.Body.Close()
+	logrus.WithFields(logrus.Fields{
+		"url": url,
+	}).Infof("Get a single release")
 
-	body, err := ioutil.ReadAll(resp.Body)
+	var release = Release{}
+	_, err = SendRequest(url, http.MethodGet, nil, "", "", &release)
 	if err != nil {
-		// handle error
-		fmt.Printf("ioutil.ReadAll failed: %v", err)
+		return nil, err
 	}
 
-	//fmt.Println(string(body))
+	result, err := json.MarshalIndent(release, "", "\t")
+	fmt.Printf("get a single release:\n%s\n", string(result))
 
-	res := Release{}
-	err = json.Unmarshal(body, &res)
-	if err != nil {
-		// handle error
-		fmt.Printf("json.Unmarshal failed: %v", err)
-	}
-
-	fmt.Printf("Release: %v", res)
+	return &release, nil
 }
 
-func GetReleaseByTag(owner string, repo string, tag string) {
+func GetReleaseByTag(owner string, repo string, tag string) (*Release, error) {
 
 	github := viper.GetString("github")
 	url := fmt.Sprintf("%s/repos/%s/%s/releases/tags/%s", github, owner, repo, tag)
 
-	resp, err := http.Get(url)
+	err := validate(map[string]string{
+		"user": owner,
+		"repo": repo,
+		"tag":  tag,
+	})
 	if err != nil {
-		// handle error
-		fmt.Printf("http.Get failed: %v", err)
+		return nil, fmt.Errorf("get a single release: %v", err)
 	}
 
-	//noinspection GoUnhandledErrorResult
-	defer resp.Body.Close()
+	logrus.WithFields(logrus.Fields{
+		"url": url,
+	}).Infof("Get a single release")
 
-	body, err := ioutil.ReadAll(resp.Body)
+	var release = Release{}
+	_, err = SendRequest(url, http.MethodGet, nil, "", "", &release)
 	if err != nil {
-		// handle error
-		fmt.Printf("ioutil.ReadAll failed: %v", err)
+		return nil, err
 	}
 
-	//fmt.Println(string(body))
+	result, err := json.MarshalIndent(release, "", "\t")
+	fmt.Printf("get a single release:\n%s\n", string(result))
 
-	res := Release{}
-	err = json.Unmarshal(body, &res)
-	if err != nil {
-		// handle error
-		fmt.Printf("json.Unmarshal failed: %v", err)
-	}
-
-	fmt.Printf("Release: %v", res)
+	return &release, nil
 }
 
 type RequestCreateRelease struct {

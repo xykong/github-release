@@ -4,6 +4,7 @@ package cmd
 
 import (
 	"fmt"
+	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"github.com/xykong/github-release/github"
@@ -33,7 +34,12 @@ to quickly create a Cobra application.`,
 			return
 		}
 
-		_, _ = github.GetReleases(owner, repo)
+		_, err := github.ListReleases(owner, repo)
+		if err != nil {
+			logrus.WithFields(logrus.Fields{
+				"error": err,
+			}).Error("list called")
+		}
 	},
 }
 

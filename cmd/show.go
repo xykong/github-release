@@ -4,6 +4,7 @@ package cmd
 
 import (
 	"fmt"
+	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"github.com/xykong/github-release/github"
@@ -34,12 +35,18 @@ Get a published release with the specified tag.
 
 		fmt.Printf("show called: %v, %s, %s, %s\n", args, owner, repo, releaseId)
 
-		if tag != "" && releaseId != "" {
-			github.GetReleaseByTag(owner, repo, tag)
-			return
+		var err error
+		if tag != "" {
+			_, err = github.GetReleaseByTag(owner, repo, tag)
+		} else {
+			_, err = github.GetRelease(owner, repo, releaseId)
 		}
 
-		github.GetRelease(owner, repo, releaseId)
+		if err != nil {
+			logrus.WithFields(logrus.Fields{
+				"error": err,
+			}).Error("show called")
+		}
 	},
 }
 
