@@ -155,6 +155,7 @@ func validate(input map[string]string) error {
 // ListReleases
 func ListReleases(owner string, repo string) (Releases, error) {
 
+	desc := "list releases for a repository"
 	github := viper.GetString("github")
 	url := fmt.Sprintf("%s/repos/%s/%s/releases", github, owner, repo)
 	token := viper.GetString("token")
@@ -164,12 +165,12 @@ func ListReleases(owner string, repo string) (Releases, error) {
 		"repo": repo,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("list releases for a repository: %v", err)
+		return nil, fmt.Errorf("%s: %v", desc, err)
 	}
 
 	logrus.WithFields(logrus.Fields{
 		"url": url,
-	}).Infof("List releases for a repository")
+	}).Info(desc)
 
 	var releases = Releases{}
 	_, err = SendRequest(url, http.MethodGet, nil, token, "", &releases)
@@ -186,8 +187,44 @@ func ListReleases(owner string, repo string) (Releases, error) {
 	return releases, nil
 }
 
+func ListAssets(owner string, repo string) (Releases, error) {
+
+	desc := "list assets for a release"
+	github := viper.GetString("github")
+	url := fmt.Sprintf("%s/repos/%s/%s/releases/%s/assets", github, owner, repo, viper.GetString("id"))
+	token := viper.GetString("token")
+	method := http.MethodGet
+
+	err := validate(map[string]string{
+		"user": owner,
+		"repo": repo,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("%s: %v", desc, err)
+	}
+
+	logrus.WithFields(logrus.Fields{
+		"url": url,
+	}).Info(desc)
+
+	var releases = Releases{}
+	_, err = SendRequest(url, method, nil, token, "", &releases)
+	if err != nil {
+		return nil, err
+	}
+
+	color.Green("%20s    %10s    %5s    %s\n", "created", "id", "draft", "tag")
+	for _, r := range releases {
+		fmt.Printf("%20v    %10d    %5v    %s\n",
+			r.CreatedAt.Format("2006-01-02 15:04:05"), r.Id, r.Draft, r.TagName)
+	}
+
+	return releases, nil
+}
+
 func GetRelease(owner string, repo string, releaseId string) (*Release, error) {
 
+	desc := "get a single release"
 	github := viper.GetString("github")
 	url := fmt.Sprintf("%s/repos/%s/%s/releases/%s", github, owner, repo, releaseId)
 
@@ -197,12 +234,12 @@ func GetRelease(owner string, repo string, releaseId string) (*Release, error) {
 		"release_id": releaseId,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("get a single release: %v", err)
+		return nil, fmt.Errorf("%s: %v", desc, err)
 	}
 
 	logrus.WithFields(logrus.Fields{
 		"url": url,
-	}).Infof("Get a single release")
+	}).Info(desc)
 
 	var release = Release{}
 	_, err = SendRequest(url, http.MethodGet, nil, "", "", &release)
@@ -211,13 +248,14 @@ func GetRelease(owner string, repo string, releaseId string) (*Release, error) {
 	}
 
 	result, err := json.MarshalIndent(release, "", "\t")
-	fmt.Printf("get a single release:\n%s\n", string(result))
+	fmt.Printf("%s:\n%s\n", desc, string(result))
 
 	return &release, nil
 }
 
 func GetReleaseByTag(owner string, repo string, tag string) (*Release, error) {
 
+	desc := "get a single release"
 	github := viper.GetString("github")
 	url := fmt.Sprintf("%s/repos/%s/%s/releases/tags/%s", github, owner, repo, tag)
 
@@ -227,12 +265,12 @@ func GetReleaseByTag(owner string, repo string, tag string) (*Release, error) {
 		"tag":  tag,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("get a single release: %v", err)
+		return nil, fmt.Errorf("%s: %v", desc, err)
 	}
 
 	logrus.WithFields(logrus.Fields{
 		"url": url,
-	}).Infof("Get a single release")
+	}).Info(desc)
 
 	var release = Release{}
 	_, err = SendRequest(url, http.MethodGet, nil, "", "", &release)
@@ -241,7 +279,7 @@ func GetReleaseByTag(owner string, repo string, tag string) (*Release, error) {
 	}
 
 	result, err := json.MarshalIndent(release, "", "\t")
-	fmt.Printf("get a single release:\n%s\n", string(result))
+	fmt.Printf("%s:\n%s\n", desc, string(result))
 
 	return &release, nil
 }
@@ -257,6 +295,7 @@ type RequestCreateRelease struct {
 
 func CreateRelease(owner string, repo string) error {
 
+	desc := "create a release"
 	github := viper.GetString("github")
 	url := fmt.Sprintf("%s/repos/%s/%s/releases", github, owner, repo)
 	token := viper.GetString("token")
@@ -283,7 +322,7 @@ func CreateRelease(owner string, repo string) error {
 		"token": token,
 	})
 	if err != nil {
-		return fmt.Errorf("create a release: %v", err)
+		return fmt.Errorf("%s: %v", desc, err)
 	}
 
 	logrus.WithFields(logrus.Fields{
@@ -296,22 +335,13 @@ func CreateRelease(owner string, repo string) error {
 		return err
 	}
 
-	content, err := json.MarshalIndent(result, "", "\t")
-	fmt.Printf("create a %v:\n%s\n", color.GreenString("release"), string(content))
-
-	logrus.WithFields(logrus.Fields{
-		"StatusCode": resp.StatusCode,
-		"Header":     resp.Header,
-		"Body":       string(content),
-	}).Debug("create a release")
-
 	if resp.StatusCode == http.StatusCreated {
 
 		logrus.WithFields(logrus.Fields{
 			"id":       int64(result["id"].(float64)),
 			"tag_name": result["tag_name"],
 			"url":      result["url"],
-		}).Info("create a release success")
+		}).Infof("%s success", desc)
 
 		return nil
 	}
@@ -320,7 +350,7 @@ func CreateRelease(owner string, repo string) error {
 
 		if errors, ok := val.([]interface{}); ok {
 
-			logrus.Errorf("create a release failed with %d errors:", len(errors))
+			logrus.Errorf("%s failed with %d errors:", desc, len(errors))
 
 			for i, v := range errors {
 
@@ -394,51 +424,4 @@ func DeleteRelease(owner string, repo string) error {
 	}
 
 	return nil
-}
-
-func ListAssets(owner string, repo string) {
-
-	github := viper.GetString("github")
-	url := fmt.Sprintf("%s/repos/%s/%s/releases/%s/assets", github, owner, repo, viper.GetString("id"))
-	token := viper.GetString("token")
-
-	method := http.MethodGet
-
-	fmt.Printf("List assets for a release: %v\n", url)
-
-	req, err := http.NewRequest(method, url, bytes.NewBuffer([]byte{}))
-	req.Header.Set("Content-Type", "application/json")
-	req.SetBasicAuth(token, "x-oauth-basic")
-
-	client := &http.Client{}
-	resp, err := client.Do(req)
-	if err != nil {
-		// handle error
-		fmt.Printf("http.Client.Do failed: %v", err)
-		return
-	}
-	//noinspection GoUnhandledErrorResult
-	if resp.Body != nil {
-		defer resp.Body.Close()
-	}
-
-	statusCode := resp.StatusCode
-	header := resp.Header
-	body, _ := ioutil.ReadAll(resp.Body)
-
-	fmt.Println(string(body))
-	fmt.Println(statusCode)
-	fmt.Println(header)
-
-	if statusCode == http.StatusNotFound {
-		var result map[string]interface{}
-		err = json.Unmarshal([]byte(body), &result)
-		if err != nil {
-			fmt.Println("Unmarshal failed, ", err)
-			return
-		}
-
-		fmt.Println(result["message"])
-		fmt.Println(result["documentation_url"])
-	}
 }
