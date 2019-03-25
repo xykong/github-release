@@ -7,8 +7,13 @@ import (
 	"github.com/fatih/color"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
+	"io"
 	"io/ioutil"
+	"log"
+	"mime/multipart"
 	"net/http"
+	"os"
+	"path/filepath"
 	"time"
 )
 
@@ -118,11 +123,17 @@ func SendRequest(url string, method string, body []byte, token string, mime stri
 
 	data, err := ioutil.ReadAll(resp.Body)
 
-	logrus.WithFields(logrus.Fields{
-		"StatusCode": resp.StatusCode,
-		"Header":     resp.Header,
-		"Body":       string(data),
-	}).Debug("send request")
+	//logrus.WithFields(logrus.Fields{
+	//	"StatusCode": resp.StatusCode,
+	//	"Header":     resp.Header,
+	//	"Body":       string(data),
+	//}).Debug("send request")
+
+	if logrus.IsLevelEnabled(logrus.DebugLevel) {
+		color.Green("StatusCode: %v\n", resp.StatusCode)
+		color.Green("Header: %v\n", resp.Header)
+		color.Green("Body: %s\n", string(data))
+	}
 
 	if err != nil {
 		fmt.Printf("ioutil.ReadAll failed: %v", err)
@@ -187,7 +198,7 @@ func ListReleases(owner string, repo string) (Releases, error) {
 	return releases, nil
 }
 
-func ListAssets(owner string, repo string) (Releases, error) {
+func ListAssets(owner string, repo string) error {
 
 	desc := "list assets for a release"
 	github := viper.GetString("github")
@@ -200,26 +211,27 @@ func ListAssets(owner string, repo string) (Releases, error) {
 		"repo": repo,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("%s: %v", desc, err)
+		return fmt.Errorf("%s: %v", desc, err)
 	}
 
 	logrus.WithFields(logrus.Fields{
 		"url": url,
 	}).Info(desc)
 
-	var releases = Releases{}
-	_, err = SendRequest(url, method, nil, token, "", &releases)
+	var result []interface{}
+	_, err = SendRequest(url, method, nil, token, "", &result)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	color.Green("%20s    %10s    %5s    %s\n", "created", "id", "draft", "tag")
-	for _, r := range releases {
-		fmt.Printf("%20v    %10d    %5v    %s\n",
-			r.CreatedAt.Format("2006-01-02 15:04:05"), r.Id, r.Draft, r.TagName)
+	color.Green("%20s    %10s    %5s    %s\n", "created", "id", "size", "name")
+	for _, v := range result {
+		item, _ := v.(map[string]interface{})
+		fmt.Printf("%20v    %10d    %d    %5v\n",
+			item["created_at"], int64(item["id"].(float64)), int64(item["size"].(float64)), item["name"])
 	}
 
-	return releases, nil
+	return nil
 }
 
 func GetRelease(owner string, repo string, releaseId string) (*Release, error) {
@@ -327,7 +339,7 @@ func CreateRelease(owner string, repo string) error {
 
 	logrus.WithFields(logrus.Fields{
 		"url": url,
-	}).Infof("Create a release")
+	}).Info(desc)
 
 	var result map[string]interface{}
 	resp, err := SendRequest(url, method, requestByte, token, "", &result)
@@ -421,6 +433,100 @@ func DeleteRelease(owner string, repo string) error {
 			"documentation_url": result["documentation_url"],
 			"message":           result["message"],
 		}).Errorf("%s failed", desc)
+	}
+
+	return nil
+}
+
+func UploadAsset(owner string, repo string, filename string) error {
+
+	desc := "upload a release asset"
+	//github := viper.GetString("github")
+	github := "https://uploads.github.com"
+	id := viper.GetString("id")
+	url := fmt.Sprintf("%s/repos/%s/%s/releases/%s/assets?name=%s", github, owner, repo, id, filename)
+	token := viper.GetString("token")
+	method := http.MethodPost
+
+	err := validate(map[string]string{
+		"user":     owner,
+		"repo":     repo,
+		"token":    token,
+		"id":       id,
+		"filename": filename,
+	})
+	if err != nil {
+		return fmt.Errorf("%s: %v", desc, err)
+	}
+
+	logrus.WithFields(logrus.Fields{
+		"url": url,
+	}).Info(desc)
+
+	file, err := os.Open(filename)
+	if err != nil {
+		log.Fatal(err)
+	}
+	//noinspection GoUnhandledErrorResult
+	defer file.Close()
+
+	body := &bytes.Buffer{}
+	writer := multipart.NewWriter(body)
+	part, err := writer.CreateFormFile("application/octet-stream", filepath.Base(file.Name()))
+
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	_, _ = io.Copy(part, file)
+	_ = writer.Close()
+
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	var result map[string]interface{}
+	resp, err := SendRequest(url, method, body.Bytes(), token, writer.FormDataContentType(), &result)
+	if err != nil {
+		return err
+	}
+
+	if resp.StatusCode == http.StatusCreated {
+
+		logrus.WithFields(logrus.Fields{
+			"id":   int64(result["id"].(float64)),
+			"name": result["name"],
+			"url":  result["url"],
+		}).Infof("%s success", desc)
+
+		return nil
+	}
+
+	if resp.StatusCode == http.StatusNotFound || resp.StatusCode == http.StatusBadRequest {
+
+		logrus.WithFields(logrus.Fields{
+			"documentation_url": result["documentation_url"],
+			"message":           result["message"],
+		}).Errorf("%s failed", desc)
+	}
+
+	if val, ok := result["errors"]; ok {
+
+		if errors, ok := val.([]interface{}); ok {
+
+			logrus.Errorf("%s failed with %d errors:", desc, len(errors))
+
+			for i, v := range errors {
+
+				if item, ok := v.(map[string]interface{}); ok {
+					if _, ok := item["message"]; ok {
+						logrus.Infof("%v: %v", color.GreenString("%v", i), item["message"])
+					} else {
+						logrus.Infof("%v: %v %v", color.GreenString("%v", i), item["code"], item["field"])
+					}
+				}
+			}
+		}
 	}
 
 	return nil
