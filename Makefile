@@ -66,3 +66,4 @@ release : version github-release
 	tar czvf github-release_$${tag}_darwin_amd64.tar.gz github-release;\
 	./github-release upload -i $${id} github-release_$${tag}_darwin_amd64.tar.gz;\
     rm -f github-release_$${tag}_darwin_amd64.tar.gz
+	git commit -a -m "make release version `cat VERSION`."

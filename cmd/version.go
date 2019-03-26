@@ -14,7 +14,7 @@ var versionCmd = &cobra.Command{
 	Short: "Print the version number of github-release",
 	Long:  `All software has versions. This is github-release's`,
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("github-release v0.1.18 -- master(bd9c6fc)")
+		fmt.Println("github-release v0.1.20 -- master(4f1f356)")
 	},
 }
 
