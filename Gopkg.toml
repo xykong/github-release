@@ -48,3 +48,11 @@
 [[constraint]]
   name = "github.com/fatih/color"
   version = "1.7.0"
+
+[[constraint]]
+  name = "github.com/h2non/filetype"
+  version = "1.0.8"
+
+[[constraint]]
+  name = "github.com/gabriel-vasile/mimetype"
+  version = "0.1.2"

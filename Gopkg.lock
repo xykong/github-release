@@ -18,6 +18,18 @@
   version = "v1.4.7"
 
 [[projects]]
+  digest = "1:ff07356d78b3bce05087a1a50476b9ee2424a729ec53e841883cc091a7d1fe3e"
+  name = "github.com/gabriel-vasile/mimetype"
+  packages = [
+    ".",
+    "matchers",
+    "matchers/json",
+  ]
+  pruneopts = "UT"
+  revision = "4ac81fa0b3447fc2af8d7ca113cf7f05aea41ffd"
+  version = "v0.1.2"
+
+[[projects]]
   digest = "1:c0d19ab64b32ce9fe5cf4ddceba78d5bc9807f0016db6b1183599da3dcc24d10"
   name = "github.com/hashicorp/hcl"
   packages = [
@@ -206,6 +218,7 @@
   analyzer-version = 1
   input-imports = [
     "github.com/fatih/color",
+    "github.com/gabriel-vasile/mimetype",
     "github.com/mitchellh/go-homedir",
     "github.com/sirupsen/logrus",
     "github.com/spf13/cobra",

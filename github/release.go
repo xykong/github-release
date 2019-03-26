@@ -5,15 +5,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/fatih/color"
+	"github.com/gabriel-vasile/mimetype"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
-	"io"
 	"io/ioutil"
-	"log"
-	"mime/multipart"
 	"net/http"
-	"os"
-	"path/filepath"
 	"time"
 )
 
@@ -224,10 +220,10 @@ func ListAssets(owner string, repo string) error {
 		return err
 	}
 
-	color.Green("%20s    %10s    %5s    %s\n", "created", "id", "size", "name")
+	color.Green("%20s    %10s    %10s    %s\n", "created", "id", "size", "name")
 	for _, v := range result {
 		item, _ := v.(map[string]interface{})
-		fmt.Printf("%20v    %10d    %d    %5v\n",
+		fmt.Printf("%20v    %10d    %10d    %v\n",
 			item["created_at"], int64(item["id"].(float64)), int64(item["size"].(float64)), item["name"])
 	}
 
@@ -358,24 +354,7 @@ func CreateRelease(owner string, repo string) error {
 		return nil
 	}
 
-	if val, ok := result["errors"]; ok {
-
-		if errors, ok := val.([]interface{}); ok {
-
-			logrus.Errorf("%s failed with %d errors:", desc, len(errors))
-
-			for i, v := range errors {
-
-				if item, ok := v.(map[string]interface{}); ok {
-					if _, ok := item["message"]; ok {
-						logrus.Infof("%v: %v", color.GreenString("%v", i), item["message"])
-					} else {
-						logrus.Infof("%v: %v %v", color.GreenString("%v", i), item["code"], item["field"])
-					}
-				}
-			}
-		}
-	}
+	printErrors(desc, result)
 
 	return nil
 }
@@ -438,7 +417,7 @@ func DeleteRelease(owner string, repo string) error {
 	return nil
 }
 
-func UploadAsset(owner string, repo string, filename string) error {
+func UploadAsset(owner string, repo string, filename string, label string) error {
 
 	desc := "upload a release asset"
 	//github := viper.GetString("github")
@@ -447,6 +426,10 @@ func UploadAsset(owner string, repo string, filename string) error {
 	url := fmt.Sprintf("%s/repos/%s/%s/releases/%s/assets?name=%s", github, owner, repo, id, filename)
 	token := viper.GetString("token")
 	method := http.MethodPost
+
+	if label != "" {
+		url += fmt.Sprintf(",label=%s", label)
+	}
 
 	err := validate(map[string]string{
 		"user":     owner,
@@ -463,30 +446,15 @@ func UploadAsset(owner string, repo string, filename string) error {
 		"url": url,
 	}).Info(desc)
 
-	file, err := os.Open(filename)
+	buf, err := ioutil.ReadFile(filename)
 	if err != nil {
-		log.Fatal(err)
-	}
-	//noinspection GoUnhandledErrorResult
-	defer file.Close()
-
-	body := &bytes.Buffer{}
-	writer := multipart.NewWriter(body)
-	part, err := writer.CreateFormFile("application/octet-stream", filepath.Base(file.Name()))
-
-	if err != nil {
-		log.Fatal(err)
+		return fmt.Errorf("%s, file read failed: %v", desc, err)
 	}
 
-	_, _ = io.Copy(part, file)
-	_ = writer.Close()
-
-	if err != nil {
-		log.Fatal(err)
-	}
+	mime, _ := mimetype.Detect(buf)
 
 	var result map[string]interface{}
-	resp, err := SendRequest(url, method, body.Bytes(), token, writer.FormDataContentType(), &result)
+	resp, err := SendRequest(url, method, buf, token, mime, &result)
 	if err != nil {
 		return err
 	}
@@ -510,6 +478,13 @@ func UploadAsset(owner string, repo string, filename string) error {
 		}).Errorf("%s failed", desc)
 	}
 
+	printErrors(desc, result)
+
+	return nil
+}
+
+func printErrors(desc string, result map[string]interface{}) {
+
 	if val, ok := result["errors"]; ok {
 
 		if errors, ok := val.([]interface{}); ok {
@@ -528,6 +503,4 @@ func UploadAsset(owner string, repo string, filename string) error {
 			}
 		}
 	}
-
-	return nil
 }

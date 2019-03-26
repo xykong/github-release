@@ -32,21 +32,24 @@ and usage of using your command. For example:
 Cobra is a CLI library for Go that empowers applications.
 This application is a tool to generate the needed files
 to quickly create a Cobra application.`,
+	Args: cobra.MinimumNArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 
 		_ = viper.BindPFlag("id", cmd.PersistentFlags().Lookup("id"))
 
 		owner := viper.GetString("user")
 		repo := viper.GetString("repo")
-		filename := viper.GetString("filename")
+		label := viper.GetString("label")
 
 		fmt.Printf("upload called: %v, %s, %s\n", args, owner, repo)
 
-		err := github.UploadAsset(owner, repo, filename)
-		if err != nil {
-			logrus.WithFields(logrus.Fields{
-				"error": err,
-			}).Error("upload called")
+		for _, name := range args {
+			err := github.UploadAsset(owner, repo, name, label)
+			if err != nil {
+				logrus.WithFields(logrus.Fields{
+					"error": err,
+				}).Error("upload called")
+			}
 		}
 	},
 }
@@ -60,8 +63,8 @@ func init() {
 	// and all subcommands, e.g.:
 	// uploadCmd.PersistentFlags().String("foo", "", "A help for foo")
 
-	uploadCmd.PersistentFlags().StringP("filename", "f", "", "The id of the release")
-	_ = viper.BindPFlag("filename", uploadCmd.PersistentFlags().Lookup("filename"))
+	uploadCmd.PersistentFlags().StringP("label", "l", "", "The id of the release")
+	_ = viper.BindPFlag("label", uploadCmd.PersistentFlags().Lookup("label"))
 
 	uploadCmd.PersistentFlags().StringP("id", "i", "", "The id of the release")
 	_ = viper.BindPFlag("id", uploadCmd.PersistentFlags().Lookup("id"))
