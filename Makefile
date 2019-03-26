@@ -59,10 +59,10 @@ publish : release
 #	git push
 	echo "publish version `cat VERSION` success."
 
-release :
+release : version github-release
 	@tag=$$(cat VERSION | awk '{print $$1}');\
 	echo $$tag;\
-	id=$$(./github-release create --tag_name $$tag --name "github-release $$tag" --body "Publish the release package.");\
-	tar czvf github-release_$$tag_darwin_amd64.tar.gz github-release;\
-	./github-release upload -i $$id github-release_$$tag_darwin_amd64.tar.gz;\
-    rm -f github-release_$$tag_darwin_amd64.tar.gz
+	id=$$(./github-release create -s --tag_name $${tag} --name "github-release $${tag}" --body "Publish the release package.");\
+	tar czvf github-release_$${tag}_darwin_amd64.tar.gz github-release;\
+	./github-release upload -i $${id} github-release_$${tag}_darwin_amd64.tar.gz;\
+    rm -f github-release_$${tag}_darwin_amd64.tar.gz

@@ -15,11 +15,11 @@
 package cmd
 
 import (
-	"fmt"
-	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"github.com/xykong/github-release/github"
+	"github.com/xykong/github-release/utils"
+	"os"
 )
 
 // uploadCmd represents the upload command
@@ -41,14 +41,13 @@ to quickly create a Cobra application.`,
 		repo := viper.GetString("repo")
 		label := viper.GetString("label")
 
-		fmt.Printf("upload called: %v, %s, %s\n", args, owner, repo)
+		utils.Verbose("upload called: %v, %s, %s\n", args, owner, repo)
 
 		for _, name := range args {
 			err := github.UploadAsset(owner, repo, name, label)
 			if err != nil {
-				logrus.WithFields(logrus.Fields{
-					"error": err,
-				}).Error("upload called")
+				utils.Error("upload called: %v", err)
+				os.Exit(1)
 			}
 		}
 	},

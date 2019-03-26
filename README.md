@@ -1,2 +1,2 @@
-# github-release v0.1.17 -- master(1ee825d)
+# github-release v0.1.18 -- master(bd9c6fc)
 Automatically creating github releases
