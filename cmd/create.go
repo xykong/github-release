@@ -3,10 +3,10 @@
 package cmd
 
 import (
-	"fmt"
-	"github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 	"github.com/xykong/github-release/github"
+	"github.com/xykong/github-release/utils"
+	"os"
 
 	"github.com/spf13/cobra"
 )
@@ -27,13 +27,12 @@ for details.
 		owner := viper.GetString("user")
 		repo := viper.GetString("repo")
 
-		fmt.Printf("create called: %v, %s, %s\n", args, owner, repo)
+		utils.Verbose("create called: %v, %s, %s\n", args, owner, repo)
 
 		err := github.CreateRelease(owner, repo)
 		if err != nil {
-			logrus.WithFields(logrus.Fields{
-				"error": err,
-			}).Error("create called")
+			utils.Error("create called: %v", err)
+			os.Exit(1)
 		}
 	},
 	Example: `github-release create --tag_name v0.0.1\

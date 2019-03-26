@@ -14,3 +14,4 @@
 .idea/workspace.xml
 .github-release.yaml
 github-release
+*.tar.gz

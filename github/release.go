@@ -8,6 +8,7 @@ import (
 	"github.com/gabriel-vasile/mimetype"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
+	"github.com/xykong/github-release/utils"
 	"io/ioutil"
 	"net/http"
 	"time"
@@ -125,11 +126,9 @@ func SendRequest(url string, method string, body []byte, token string, mime stri
 	//	"Body":       string(data),
 	//}).Debug("send request")
 
-	if logrus.IsLevelEnabled(logrus.DebugLevel) {
-		color.Green("StatusCode: %v\n", resp.StatusCode)
-		color.Green("Header: %v\n", resp.Header)
-		color.Green("Body: %s\n", string(data))
-	}
+	utils.Debug("StatusCode: %v\n", resp.StatusCode)
+	utils.Debug("Header: %v\n", resp.Header)
+	utils.Debug("Body: %s\n", string(data))
 
 	if err != nil {
 		fmt.Printf("ioutil.ReadAll failed: %v", err)
@@ -333,9 +332,7 @@ func CreateRelease(owner string, repo string) error {
 		return fmt.Errorf("%s: %v", desc, err)
 	}
 
-	logrus.WithFields(logrus.Fields{
-		"url": url,
-	}).Info(desc)
+	utils.Info("%s, url: %s", desc, url)
 
 	var result map[string]interface{}
 	resp, err := SendRequest(url, method, requestByte, token, "", &result)
@@ -345,18 +342,19 @@ func CreateRelease(owner string, repo string) error {
 
 	if resp.StatusCode == http.StatusCreated {
 
-		logrus.WithFields(logrus.Fields{
+		utils.Infof(utils.Fields{
 			"id":       int64(result["id"].(float64)),
 			"tag_name": result["tag_name"],
 			"url":      result["url"],
-		}).Infof("%s success", desc)
+		}, "%s success", desc)
 
+		utils.Essential("%d", int64(result["id"].(float64)))
 		return nil
 	}
 
 	printErrors(desc, result)
 
-	return nil
+	return fmt.Errorf("failed")
 }
 
 func DeleteRelease(owner string, repo string) error {
@@ -489,15 +487,15 @@ func printErrors(desc string, result map[string]interface{}) {
 
 		if errors, ok := val.([]interface{}); ok {
 
-			logrus.Errorf("%s failed with %d errors:", desc, len(errors))
+			utils.Error("%s failed with %d errors:", desc, len(errors))
 
 			for i, v := range errors {
 
 				if item, ok := v.(map[string]interface{}); ok {
 					if _, ok := item["message"]; ok {
-						logrus.Infof("%v: %v", color.GreenString("%v", i), item["message"])
+						utils.Error("\t%v: %v", color.GreenString("%v", i), item["message"])
 					} else {
-						logrus.Infof("%v: %v %v", color.GreenString("%v", i), item["code"], item["field"])
+						utils.Error("\t%v: %v %v", color.GreenString("%v", i), item["code"], item["field"])
 					}
 				}
 			}

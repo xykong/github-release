@@ -5,6 +5,7 @@ package cmd
 import (
 	"fmt"
 	"github.com/sirupsen/logrus"
+	"github.com/xykong/github-release/utils"
 	"os"
 
 	"github.com/mitchellh/go-homedir"
@@ -52,8 +53,14 @@ func init() {
 	rootCmd.PersistentFlags().StringP("repo", "r", "", "The name of the repository")
 	_ = viper.BindPFlag("repo", rootCmd.PersistentFlags().Lookup("repo"))
 
+	rootCmd.PersistentFlags().BoolP("debug", "d", false, "Verbose message for debug")
+	_ = viper.BindPFlag("debug", rootCmd.PersistentFlags().Lookup("debug"))
+
 	rootCmd.PersistentFlags().BoolP("verbose", "v", false, "Verbose message for debug")
 	_ = viper.BindPFlag("verbose", rootCmd.PersistentFlags().Lookup("verbose"))
+
+	rootCmd.PersistentFlags().BoolP("essential", "s", false, "Verbose message for debug")
+	_ = viper.BindPFlag("essential", rootCmd.PersistentFlags().Lookup("essential"))
 }
 
 // initConfig reads in config file and ENV variables if set.
@@ -83,7 +90,7 @@ func initConfig() {
 
 	// If a config file is found, read it in.
 	if err := viper.ReadInConfig(); err == nil {
-		fmt.Println("Using config file:", viper.ConfigFileUsed())
+		utils.Verbose("Using config file:", viper.ConfigFileUsed())
 	}
 
 	level := logrus.InfoLevel
@@ -91,6 +98,7 @@ func initConfig() {
 		level = logrus.DebugLevel
 	}
 	logrus.SetLevel(level)
+	logrus.SetOutput(os.Stdout)
 	logrus.SetFormatter(&logrus.TextFormatter{
 		DisableLevelTruncation: false,
 		DisableTimestamp:       true,

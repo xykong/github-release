@@ -42,8 +42,6 @@ SOURCES := $(shell find $(SOURCE_DIR) -name '*.go')
 
 default : github-release
 
-release : version github-release test
-
 github-release : $(SOURCES)
 	go build
 
@@ -60,3 +58,11 @@ publish : release
 	git commit -a -m "publish version `cat VERSION`."
 #	git push
 	echo "publish version `cat VERSION` success."
+
+release :
+	@tag=$$(cat VERSION | awk '{print $$1}');\
+	echo $$tag;\
+	id=$$(./github-release create --tag_name $$tag --name "github-release $$tag" --body "Publish the release package.");\
+	tar czvf github-release_$$tag_darwin_amd64.tar.gz github-release;\
+	./github-release upload -i $$id github-release_$$tag_darwin_amd64.tar.gz;\
+    rm -f github-release_$$tag_darwin_amd64.tar.gz
